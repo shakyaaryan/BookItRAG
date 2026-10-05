@@ -3,5 +3,5 @@ bookitrag-env/
 
 
 .env
-backend_technical_plan
+backend_technical_plan.md
 pyproject.toml
