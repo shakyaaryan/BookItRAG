@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from uuid import UUID
 from typing import List
 import tempfile
 import os
@@ -23,7 +22,6 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 @router.post("/ingest", response_model=DocumentIngestResponse)
 async def ingest_documents(
-    user_id: UUID = Form(...),
     chunking_method: str = Form(default="recursive"),
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
@@ -62,27 +60,27 @@ async def ingest_documents(
             file_docs = [d for d in chunked_docs if d.metadata.get("source") == filename]
 
             if file_docs:
-                chunks_created = vector_store.upsert_documents(file_docs, user_id, doc_id)
+                chunks_created = vector_store.upsert_documents(file_docs, doc_id)
 
                 metadata = DocumentMetadata(
-                    user_id=user_id,
                     doc_id=doc_id,
                     file_name=filename,
                     chunking_method=ChunkingMethod(chunking_method),
                 )
                 db.add(metadata)
                 db.commit()
+                db.refresh(metadata)
 
                 processed_files.append(DocumentProcessed(
                     doc_id=doc_id,
                     file_name=filename,
                     chunking_method=chunking_method,
                     chunks_created=chunks_created,
+                    ingested_at=metadata.ingested_at,
                 ))
 
         return DocumentIngestResponse(
             status="success",
-            user_id=user_id,
             processed_files=processed_files,
         )
 

@@ -1,10 +1,14 @@
 extra/
 bookitrag-env/
+10_IT_Job_Postings_PDFs/
 
 
 .env
 backend_technical_plan.md
 pyproject.toml
+SYSTEM_DESIGN.md
+
+*.db
 
 __pycache__/
 *.pyc

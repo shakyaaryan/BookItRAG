@@ -5,6 +5,7 @@ pydantic
 pydantic-settings
 pydantic[email]
 python-multipart
+pypdf
 redis
 pinecone
 langchain
@@ -18,4 +19,3 @@ sentence-transformers
 huggingface-hub
 aiosmtplib
 python-dotenv
-psycopg2-binary

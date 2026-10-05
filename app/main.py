@@ -7,7 +7,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.v1 import chat, ingestion
 from app.config import settings
 from app.database import Base, engine
-from app.api.v1 import users
 
 
 @asynccontextmanager
@@ -53,6 +52,5 @@ async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
 
 
-app.include_router(users.router, prefix="/api/v1")
 app.include_router(ingestion.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")

@@ -4,23 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    full_name: str = Field(..., min_length=1, max_length=255)
-
-
-class UserResponse(BaseModel):
-    id: UUID
-    email: EmailStr
-    full_name: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 class DocumentIngestRequest(BaseModel):
-    user_id: UUID
     chunking_method: str = Field(default="recursive", pattern="^(recursive|semantic)$")
 
 
@@ -29,16 +13,15 @@ class DocumentProcessed(BaseModel):
     file_name: str
     chunking_method: str
     chunks_created: int
+    ingested_at: datetime
 
 
 class DocumentIngestResponse(BaseModel):
     status: str
-    user_id: UUID
     processed_files: List[DocumentProcessed]
 
 
 class ChatRequest(BaseModel):
-    user_id: UUID
     session_id: str
     message: str
 
@@ -46,22 +29,25 @@ class ChatRequest(BaseModel):
 class RetrievedSource(BaseModel):
     file_name: str
     page: int
+    ingested_at: Optional[datetime] = None
 
 
 class BookingDetails(BaseModel):
-    name: str
-    email: EmailStr
-    date: str
-    time: str
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    job_role: Optional[str] = None
+    confirmation: Optional[str] = None
 
 
 class BookingStatus(BaseModel):
     status: str
     details: Optional[BookingDetails] = None
+    missing: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):
-    user_id: UUID
     session_id: str
     response: str
     booking_status: BookingStatus

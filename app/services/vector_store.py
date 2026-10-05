@@ -1,5 +1,5 @@
-from typing import List, Dict, Any
-from uuid import UUID
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 from pinecone import Pinecone, ServerlessSpec
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -8,7 +8,7 @@ from app.config import settings
 
 class VectorStore:
     def __init__(self):
-        self.pc = Pinecone(api_key=settings.PINECONE_API_KEY)
+        self.pc = Pinecone(api_key=settings.PINECONE_API_KEY.get_secret_value())
         self.index_name = settings.PINECONE_INDEX_NAME
         self.embeddings = HuggingFaceEmbeddings(
             model_name=settings.EMBEDDING_MODEL_NAME,
@@ -30,20 +30,22 @@ class VectorStore:
     def upsert_documents(
         self,
         documents: List[Document],
-        user_id: UUID,
         doc_id: str,
+        ingested_at: Optional[datetime] = None,
     ) -> int:
         texts = [doc.page_content for doc in documents]
         embeddings = self.embeddings.embed_documents(texts)
 
+        ingested_at_str = ingested_at.isoformat() if ingested_at else datetime.utcnow().isoformat()
+
         vectors = []
         for i, (doc, embedding) in enumerate(zip(documents, embeddings)):
             metadata = {
-                "user_id": str(user_id),
                 "doc_id": doc_id,
                 "source": doc.metadata.get("source", "unknown"),
                 "page": doc.metadata.get("page", 0),
                 "text": doc.page_content,
+                "ingested_at": ingested_at_str,
             }
             vectors.append({
                 "id": f"{doc_id}_{i}",
@@ -58,14 +60,13 @@ class VectorStore:
     def similarity_search(
         self,
         query: str,
-        user_id: UUID,
-        top_k: int = 4,
+        top_k: int = 10,
     ) -> List[Dict[str, Any]]:
         query_embedding = self.embeddings.embed_query(query)
+
         results = self.index.query(
             vector=query_embedding,
             top_k=top_k,
-            filter={"user_id": {"$eq": str(user_id)}},
             include_metadata=True,
         )
         return results.matches if results.matches else []
