@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field("redis://localhost:6379/0", description="Redis connection URL for chat history")
     REDIS_SESSION_TTL: int = Field(86400, description="Chat session TTL in seconds (default 24h)")
 
-    GEMINI_API_KEY: str = Field(..., description="API key for Google Gemini")
+    GOOGLE_API_KEY: str = Field(..., description="API key for Google Gemini")
     LLM_MODEL_NAME: str = Field("gemini-1.5-flash", description="Gemini model identifier")
 
     EMBEDDING_MODEL_NAME: str = Field(

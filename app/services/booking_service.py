@@ -14,7 +14,7 @@ class BookingService:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
             model=settings.LLM_MODEL_NAME,
-            google_api_key=settings.GEMINI_API_KEY,
+            google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.1,
         )
 

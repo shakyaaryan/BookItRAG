@@ -35,7 +35,6 @@ bookitrag/
 │   │   └── memory_service.py   # Redis history
 │   └── utils/
 │       └── email.py            # Async SMTP
-├── alembic/                    # Migrations
 ├── requirements.txt
 └── .env.example
 ```
@@ -61,12 +60,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-4. Run migrations:
-```bash
-alembic upgrade head
-```
-
-5. Start the server:
+4. Start the server:
 ```bash
 uvicorn app.main:app --reload
 ```
