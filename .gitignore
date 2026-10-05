@@ -5,3 +5,8 @@ bookitrag-env/
 .env
 backend_technical_plan.md
 pyproject.toml
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
