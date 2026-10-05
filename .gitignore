@@ -1,0 +1,7 @@
+extra/
+bookitrag-env/
+
+
+.env
+backend_technical_plan
+pyproject.toml
