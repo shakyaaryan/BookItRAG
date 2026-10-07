@@ -74,7 +74,6 @@ async def ingest_documents(
                     doc_id=doc_id,
                     file_name=filename,
                     chunking_method=chunking_method,
-                    chunks_created=chunks_created,
                     ingested_at=metadata.ingested_at,
                 ))
 

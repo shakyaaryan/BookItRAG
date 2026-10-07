@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -30,18 +30,12 @@ class BookingDetail(BookingListItem):
 
 @router.get("", response_model=List[BookingListItem])
 async def list_bookings(
-    email: Optional[str] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
-    """List all interview bookings with optional email filter and pagination."""
-    query = db.query(InterviewBooking)
-    
-    if email:
-        query = query.filter(InterviewBooking.email == email)
-    
-    bookings = query.order_by(
+    """List all interview bookings with pagination."""
+    bookings = db.query(InterviewBooking).order_by(
         InterviewBooking.created_at.desc()
     ).offset(offset).limit(limit).all()
     

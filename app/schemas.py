@@ -12,7 +12,6 @@ class DocumentProcessed(BaseModel):
     doc_id: str
     file_name: str
     chunking_method: str
-    chunks_created: int
     ingested_at: datetime
 
 

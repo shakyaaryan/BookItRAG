@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -16,6 +17,8 @@ from app.config import settings
 from app.models import InterviewBooking
 from app.database import SessionLocal
 
+logger = logging.getLogger(__name__)
+
 
 def _get_today_str() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d")
@@ -23,11 +26,34 @@ def _get_today_str() -> str:
 
 def _send_booking_email_sync(to_email: str, name: str, date: str, time: str) -> None:
     """Synchronous email sending for use in agent tools (runs in worker thread)."""
-    smtp_host = settings.SMTP_HOST
+    smtp_host = settings.SMTP_SERVER
     smtp_port = settings.SMTP_PORT
-    smtp_user = settings.SMTP_USER
+    smtp_user = settings.SMTP_USERNAME
     smtp_password = settings.SMTP_PASSWORD.get_secret_value()
-    from_email = settings.FROM_EMAIL
+    from_email = settings.SENDER_EMAIL
+
+    logger.info(f"Sending confirmation email to {to_email} for booking on {date} at {time}")
+
+    msg = MIMEMultipart()
+    msg["From"] = from_email
+    msg["To"] = to_email
+    msg["Subject"] = f"Interview Confirmation - {date} at {time}"
+
+    body = f"""Dear {name},
+
+Your interview has been confirmed for {date} at {time}.
+
+Best regards,
+BookItRAG Team
+"""
+    msg.attach(MIMEText(body, "plain"))
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+
+    logger.info(f"Confirmation email sent successfully to {to_email}")
 
     msg = MIMEMultipart()
     msg["From"] = from_email
@@ -108,11 +134,14 @@ def confirm_booking(email: str) -> str:
         ).order_by(InterviewBooking.created_at.desc()).first()
         
         if not pending:
+            logger.warning(f"No pending booking found for {email}")
             return f"No pending booking found for {email}."
         
         pending.confirmation = "confirmed"
         db.commit()
         db.refresh(pending)
+        
+        logger.info(f"Booking confirmed for {pending.name} ({pending.email}), sending confirmation email")
         
         _send_booking_email_sync(
             to_email=pending.email,
@@ -121,10 +150,12 @@ def confirm_booking(email: str) -> str:
             time=pending.booking_time,
         )
         
+        logger.info(f"Booking confirmed and email sent successfully for {pending.email}")
         return f"Booking confirmed for {pending.name} ({pending.email}) on {pending.booking_date} at {pending.booking_time} for {pending.job_role}. Confirmation email sent."
     except Exception as e:
         db.rollback()
-        return f"Error confirming booking: {str(e)}"
+        logger.exception(f"Error confirming booking for {email}: {e}")
+        raise
     finally:
         db.close()
 
