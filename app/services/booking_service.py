@@ -7,6 +7,7 @@ from langchain_core.messages import HumanMessage
 from app.config import settings
 from app.models import InterviewBooking
 from app.utils.email import send_booking_confirmation_email
+from app.utils.llm_text import extract_llm_text
 
 
 class BookingService:
@@ -16,13 +17,6 @@ class BookingService:
             google_api_key=settings.GOOGLE_API_KEY.get_secret_value(),
             temperature=0.1,
         )
-
-    def _extract_content(self, response) -> str:
-        """Extract text content from Gemini response (handles both string and list formats)."""
-        content = response.content
-        if isinstance(content, list):
-            return "".join(block.text for block in content if hasattr(block, 'text'))
-        return content.strip() if content else ""
 
     def _today_str(self) -> str:
         return datetime.utcnow().strftime("%Y-%m-%d")
@@ -54,7 +48,7 @@ Current Message: {query}
 Return ONLY the JSON object or null:"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
-        content = self._extract_content(response)
+        content = extract_llm_text(response)
 
         try:
             if content.lower() == "null":
@@ -88,19 +82,8 @@ Current Message: {query}
 Return ONLY true or false:"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
-        content = self._extract_content(response)
+        content = extract_llm_text(response)
         return content.lower() == "true"
-
-    def _merge_with_history(self, current: Dict[str, Any], history: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Fill missing fields from the most recent booking_info in history."""
-        for msg in reversed(history):
-            if msg["role"] == "assistant" and isinstance(msg["content"], dict):
-                # This would be if we stored booking info in history
-                pass
-            # Actually, simpler: check if previous extract_booking_info calls stored data
-            # We can embed extracted info in history by checking prior messages
-        # For now, just return current - the LLM sees history and should fill gaps
-        return current
 
     def save_booking(
         self,

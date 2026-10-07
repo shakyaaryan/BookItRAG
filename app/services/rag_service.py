@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.config import settings
 from app.services.vector_store import get_vector_store
 from app.services.memory_service import get_memory_service
+from app.utils.llm_text import extract_llm_text
 
 
 class RAGService:
@@ -17,13 +18,6 @@ class RAGService:
         )
         self.vector_store = get_vector_store()
         self.memory_service = get_memory_service()
-
-    def _extract_content(self, response) -> str:
-        """Extract text content from Gemini response (handles both string and list formats)."""
-        content = response.content
-        if isinstance(content, list):
-            return "".join(block.text for block in content if hasattr(block, 'text'))
-        return content.strip() if content else ""
 
     def _format_history(self, history: List[Dict[str, Any]]) -> List:
         messages = []
@@ -52,7 +46,7 @@ Follow-up Question: {query}
 Standalone Question:"""
 
         response = self.llm.invoke([HumanMessage(content=prompt)])
-        return self._extract_content(response)
+        return extract_llm_text(response)
 
     def _retrieve_context(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
         return self.vector_store.similarity_search(query, top_k)
@@ -110,7 +104,7 @@ Prioritize information from the most recently ingested documents."""
         messages.append(HumanMessage(content=f"Context:\n{context}\n\nQuestion: {standalone_query}"))
 
         response = self.llm.invoke(messages)
-        answer = self._extract_content(response)
+        answer = extract_llm_text(response)
 
         sources = []
         for doc in prioritized_docs:

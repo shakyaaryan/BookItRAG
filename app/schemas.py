@@ -45,6 +45,7 @@ class BookingStatus(BaseModel):
     status: str
     details: Optional[BookingDetails] = None
     missing: Optional[List[str]] = None
+    prompt: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

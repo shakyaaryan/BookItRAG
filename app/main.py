@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1 import chat, ingestion
+from app.api.v1 import chat, ingestion, documents, bookings
 from app.config import settings
 from app.database import Base, engine
 
@@ -54,3 +54,5 @@ async def health_check():
 
 app.include_router(ingestion.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
+app.include_router(documents.router, prefix="/api/v1")
+app.include_router(bookings.router, prefix="/api/v1")

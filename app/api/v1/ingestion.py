@@ -8,7 +8,6 @@ from app.database import get_db
 from app.models import DocumentMetadata, ChunkingMethod
 from app.schemas import DocumentIngestResponse, DocumentProcessed
 from app.services.document_service import (
-    save_uploaded_files,
     load_documents,
     cleanup_temp_files,
     generate_doc_id,

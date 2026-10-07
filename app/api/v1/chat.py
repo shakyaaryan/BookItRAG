@@ -1,51 +1,87 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import List
 
 from app.database import get_db
 from app.schemas import ChatRequest, ChatResponse, BookingStatus, BookingDetails, RetrievedSource
-from app.services.rag_service import get_rag_service
-from app.services.booking_service import get_booking_service
+from app.services.vector_store import get_vector_store
 from app.services.memory_service import get_memory_service
+from app.services.agent_service import get_agent_service
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+def _prioritize_latest(docs: List[Dict[str, Any]], top_k: int = 4) -> List[Dict[str, Any]]:
+    """Sort documents by ingested_at descending (latest first) and return top_k."""
+    from datetime import datetime
+    def get_ingested_at(doc):
+        meta = doc.get("metadata", {})
+        ingested_str = meta.get("ingested_at")
+        if ingested_str:
+            try:
+                return datetime.fromisoformat(ingested_str)
+            except ValueError:
+                pass
+        return datetime.min
+    
+    sorted_docs = sorted(docs, key=get_ingested_at, reverse=True)
+    return sorted_docs[:top_k]
+
+
+def _format_context(retrieved_docs: List[Dict[str, Any]]) -> str:
+    if not retrieved_docs:
+        return "No relevant documents found."
+
+    context_parts = []
+    for doc in retrieved_docs:
+        metadata = doc.metadata
+        source = metadata.get("source", "unknown")
+        page = metadata.get("page", 0)
+        text = metadata.get("text", "")
+        ingested_at = metadata.get("ingested_at", "")
+        context_parts.append(f"[Source: {source}, Page: {page}, Ingested: {ingested_at}]\n{text}")
+
+    return "\n\n---\n\n".join(context_parts)
+
+
 @router.post("", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
-    rag_service = get_rag_service()
-    booking_service = get_booking_service()
     memory_service = get_memory_service()
+    vector_store = get_vector_store()
+    agent_service = get_agent_service()
 
     history = memory_service.get_history(request.session_id)
 
-    answer, retrieved_docs, sources = rag_service.generate_answer(
-        query=request.message,
+    # 1. Pre-fetch RAG context
+    retrieved_docs = vector_store.similarity_search(request.message, top_k=10)
+    prioritized_docs = _prioritize_latest(retrieved_docs, top_k=4)
+    rag_context = _format_context(prioritized_docs)
+
+    # Format sources for response
+    sources = []
+    for doc in prioritized_docs:
+        metadata = doc.metadata
+        sources.append({
+            "file_name": metadata.get("source", "unknown"),
+            "page": metadata.get("page", 0),
+            "ingested_at": metadata.get("ingested_at"),
+        })
+
+    # 2. Run agent with pre-fetched context
+    answer, agent_sources, booking_status_dict = await agent_service.run(
         session_id=request.session_id,
-    )
-
-    booking_result = await booking_service.process_booking(
-        db=db,
-        query=request.message,
+        message=request.message,
         history=history,
+        rag_context=rag_context,
     )
 
-    if booking_result:
-        booking_status = BookingStatus(**booking_result)
-    else:
-        booking_status = BookingStatus(status="none", details=None)
+    # 3. Build booking status
+    booking_status = BookingStatus(**booking_status_dict)
 
-    # If booking needs more info, override the LLM answer with the deterministic prompt
-    if booking_status.status == "needs_info":
-        answer = booking_status.prompt or "Please provide the missing information."
-        # Don't add the RAG answer to history on needs_info turns - we want the follow-up question
-        memory_service.add_message(request.session_id, "user", request.message)
-        memory_service.add_message(request.session_id, "assistant", answer)
-    else:
-        # Normal flow: save both messages
-        memory_service.add_message(request.session_id, "user", request.message)
-        memory_service.add_message(request.session_id, "assistant", answer)
+    # 4. Update memory
+    memory_service.add_message(request.session_id, "user", request.message)
+    memory_service.add_message(request.session_id, "assistant", answer)
 
     return ChatResponse(
         session_id=request.session_id,
