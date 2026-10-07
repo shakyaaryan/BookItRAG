@@ -28,10 +28,32 @@ class BookingDetail(BookingListItem):
     pass
 
 
-@router.get("", response_model=List[BookingListItem])
+@router.get(
+    "",
+    response_model=List[BookingListItem],
+    summary="List all interview bookings",
+    description="""Retrieve a paginated list of all interview bookings, ordered by creation date (newest first).
+
+**Pagination:**
+- `limit`: Number of items per page (1-100, default 50)
+- `offset`: Number of items to skip (default 0)
+
+**No email filter** — returns all bookings across all candidates.
+
+**Response:** Array of bookings with:
+- `id`: UUID string
+- `name`: Candidate name
+- `email`: Candidate email
+- `job_role`: Applied position
+- `booking_date`: Interview date (YYYY-MM-DD)
+- `booking_time`: Interview time (HH:MM 24-hour)
+- `confirmation`: "pending" or "confirmed"
+- `created_at`: ISO 8601 timestamp
+""",
+)
 async def list_bookings(
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100, description="Items per page (1-100)"),
+    offset: int = Query(default=0, ge=0, description="Items to skip"),
     db: Session = Depends(get_db),
 ):
     """List all interview bookings with pagination."""
@@ -55,7 +77,22 @@ async def list_bookings(
     return result
 
 
-@router.get("/{booking_id}", response_model=BookingDetail)
+@router.get(
+    "/{booking_id}",
+    response_model=BookingDetail,
+    summary="Get booking by ID",
+    description="""Retrieve a specific interview booking by its UUID.
+
+**Path Parameter:**
+- `booking_id`: UUID string (e.g., "123e4567-e89b-12d3-a456-426614174000")
+
+**Returns:** Full booking details including all fields.
+
+**Errors:**
+- `400`: Invalid UUID format
+- `404`: Booking not found
+""",
+)
 async def get_booking(
     booking_id: str,
     db: Session = Depends(get_db),

@@ -12,14 +12,30 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 class DocumentListItem(DocumentProcessed):
-    """Extended document info for listing."""
+    """Document list item — inherits from DocumentProcessed."""
     pass
 
 
-@router.get("", response_model=List[DocumentListItem])
+@router.get(
+    "",
+    response_model=List[DocumentListItem],
+    summary="List ingested documents",
+    description="""Retrieve a paginated list of all ingested documents, ordered by ingestion date (newest first).
+
+**Pagination:**
+- `limit`: Number of items per page (1-100, default 50)
+- `offset`: Number of items to skip (default 0)
+
+**Response:** Array of documents with:
+- `doc_id`: Unique document identifier
+- `file_name`: Original filename
+- `chunking_method`: "recursive" or "semantic"
+- `ingested_at`: ISO 8601 timestamp of ingestion
+""",
+)
 async def list_documents(
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100, description="Items per page (1-100)"),
+    offset: int = Query(default=0, ge=0, description="Items to skip"),
     db: Session = Depends(get_db),
 ):
     """List all ingested documents with pagination."""

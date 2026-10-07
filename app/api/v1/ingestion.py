@@ -19,10 +19,36 @@ from app.services.vector_store import get_vector_store
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("/ingest", response_model=DocumentIngestResponse)
+@router.post(
+    "/ingest",
+    response_model=DocumentIngestResponse,
+    summary="Ingest documents for RAG",
+    description="""Upload PDF or TXT files to be processed, chunked, embedded, and stored in Pinecone for RAG retrieval.
+
+**Process:**
+1. Files are saved to temporary storage
+2. Documents are loaded and split into chunks (recursive or semantic)
+3. Embeddings are generated via HuggingFace sentence-transformers
+4. Vectors are upserted to Pinecone with document metadata
+5. Document metadata is persisted to SQLite
+
+**Supported formats:** PDF (.pdf), Text (.txt)
+
+**Chunking methods:**
+- `recursive`: RecursiveCharacterTextSplitter (default, good for general docs)
+- `semantic`: SemanticChunker (uses embeddings for semantic boundaries)
+
+**Returns:** List of processed files with doc_id, file_name, chunking_method, and ingestion timestamp.
+""",
+)
 async def ingest_documents(
-    chunking_method: str = Form(default="recursive"),
-    files: List[UploadFile] = File(...),
+    chunking_method: str = Form(
+        default="recursive",
+        description="Chunking strategy: 'recursive' or 'semantic'",
+    ),
+    files: List[UploadFile] = File(
+        ..., description="One or more PDF/TXT files to ingest"
+    ),
     db: Session = Depends(get_db),
 ):
     if chunking_method not in ["recursive", "semantic"]:

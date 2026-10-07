@@ -45,7 +45,46 @@ def _format_context(retrieved_docs: List[Dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(context_parts)
 
 
-@router.post("", response_model=ChatResponse)
+@router.post(
+    "",
+    response_model=ChatResponse,
+    summary="Conversational RAG with Interview Booking",
+    description="""Chat with the BookItRAG agent for job-related questions and interview booking.
+
+**Architecture:**
+- Pre-fetches relevant job postings from Pinecone (top 10 → latest 4)
+- Runs a LangGraph agent (Gemini) with pre-fetched context and 2 booking tools
+- Maintains conversation history in Redis (per session_id)
+
+**Agent Tools:**
+1. `create_pending_booking(name, email, job_role, date, time)` — Creates a pending booking when ALL 5 fields are collected
+2. `confirm_booking(email)` — Confirms pending booking, flips to "confirmed", sends SMTP email
+
+**Booking Flow (Multi-turn):**
+1. User expresses booking intent → Agent asks for missing fields (name, email, job_role, date, time)
+2. User provides all details → Agent calls `create_pending_booking` → Returns `booking_status: "pending_confirmation"` with details
+3. Agent asks: "Please confirm to book this interview."
+4. User explicitly confirms ("yes", "confirm", "book it") → Agent calls `confirm_booking` → Sends email → Returns `booking_status: "confirmed"`
+
+**Response Fields:**
+- `response`: Agent's answer (job info or booking prompt)
+- `booking_status`: 
+  - `status`: "none" | "pending_confirmation" | "confirmed"
+  - `details`: BookingDetails object with fields
+  - `missing`: List of missing field names (if status="pending_confirmation")
+  - `prompt`: Agent's follow-up question (if any)
+- `retrieved_sources`: List of source documents used for RAG answer
+
+**Date/Time Format:**
+- Dates: YYYY-MM-DD (relative dates like "tomorrow", "next Friday" resolved using today's date)
+- Times: HH:MM 24-hour format
+
+**Session Management:**
+- `session_id`: Client-generated unique identifier for conversation
+- History stored in Redis with TTL (default 24h)
+- Booking state correlated by email (latest pending booking per email)
+""",
+)
 async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     memory_service = get_memory_service()
     vector_store = get_vector_store()
