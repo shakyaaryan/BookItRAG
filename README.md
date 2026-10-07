@@ -7,7 +7,6 @@ A modular, production-ready FastAPI backend for **Conversational RAG with Interv
 - **Document Ingestion API**: Process PDF and TXT files, extract content, chunk text (recursive or semantic), compute embeddings via HuggingFace transformers, and store in Pinecone vector database
 - **Conversational RAG API**: Agent-based RAG engine using Google Gemini with pre-fetched context, multi-turn conversation history via Redis, and intelligent tool-calling for booking workflows
 - **Interview Booking System**: Two-step booking flow (pending → confirmed) with explicit user confirmation, SQL persistence, and SMTP email confirmations
-- **Identity-Free Design**: No user/admin authentication required — simple session-based chat and email-based booking correlation
 - **Admin View APIs**: List ingested documents and interview bookings with pagination
 
 ## Architecture
@@ -45,7 +44,7 @@ bookitrag/
 
 ## Prerequisites
 
-- **Python 3.11+**
+- **Python 3.14+**
 - **Redis** (for chat history) — see Docker commands below
 - **Pinecone Account** (vector database) — free tier available
 - **Google AI Studio API Key** (Gemini) — free tier available
@@ -56,7 +55,7 @@ bookitrag/
 ### 1. Clone & Create Virtual Environment
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/shakyaaryan/BookItRAG.git
 cd BookItRAG
 
 python -m venv bookitrag-env
